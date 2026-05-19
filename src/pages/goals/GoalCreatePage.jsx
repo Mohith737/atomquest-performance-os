@@ -1,5 +1,5 @@
 ﻿import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
@@ -92,6 +92,7 @@ function applyServerErrors(error, setError) {
 
 export default function GoalCreatePage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const goalsQuery = useQuery({ queryKey: QUERY_KEYS.GOALS, queryFn: () => getGoals() })
   const form = useForm({
     resolver: zodResolver(goalSchema),
@@ -117,18 +118,22 @@ export default function GoalCreatePage() {
     mutationFn: async ({ values, submitForReview }) => {
       const goal = await createGoal(values)
       if (submitForReview) {
-        await submitGoal(goal.id)
+        return submitGoal(goal.id)
       }
       return goal
     },
     onSuccess: (_, variables) => {
       toast.success(variables.submitForReview ? 'Goal submitted for review' : 'Goal saved as draft')
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GOALS })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD })
       navigate(ROUTES.GOALS)
     },
     onError: (error) => {
       if (!applyServerErrors(error, form.setError)) {
         toast.error(error.response?.data?.detail || 'Unable to save goal')
+        return
       }
+      toast.error('Review the highlighted fields')
     },
   })
 

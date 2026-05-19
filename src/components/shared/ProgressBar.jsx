@@ -1,5 +1,13 @@
+import { useEffect, useState } from 'react'
+
 export default function ProgressBar({ value, showLabel = false }) {
   const safeValue = Math.min(100, Math.max(0, value))
+  const [animatedValue, setAnimatedValue] = useState(0)
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setAnimatedValue(safeValue))
+    return () => cancelAnimationFrame(frame)
+  }, [safeValue])
 
   return (
     <div className="w-full">
@@ -12,7 +20,7 @@ export default function ProgressBar({ value, showLabel = false }) {
       <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
         <div
           className="h-2 rounded-full bg-indigo-600 transition-all duration-1000 ease-out"
-          style={{ width: `${safeValue}%` }}
+          style={{ width: `${animatedValue}%` }}
         />
       </div>
     </div>

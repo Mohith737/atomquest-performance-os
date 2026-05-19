@@ -1,25 +1,24 @@
 import { Menu } from 'lucide-react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 import SidebarContent from './SidebarContent'
 
 export default function MobileSidebar() {
+  const [open, setOpen] = useState(false)
+
   return (
-    <div className="fixed left-4 top-4 z-40 lg:hidden">
-      <Sheet>
+    <div className="fixed left-0 top-0 z-50 p-4 lg:hidden">
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="rounded-xl border-slate-200 bg-white">
-            <Menu className="h-4 w-4" />
+          <Button variant="ghost" size="icon">
+            <Menu size={20} />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 border-slate-200 p-0">
-          <SidebarContent />
+        <SheetContent side="left" className="w-60 p-0">
+          <SidebarContent onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
     </div>

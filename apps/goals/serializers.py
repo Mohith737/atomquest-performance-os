@@ -9,6 +9,7 @@ from .validators import validate_transition, validate_weightage_sum
 
 class GoalSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
+    approvals = serializers.SerializerMethodField()
 
     class Meta:
         model = Goal
@@ -17,10 +18,17 @@ class GoalSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = self.instance
-        if instance and instance.is_locked:
+        next_status = attrs.get('status')
+        is_completion_transition = (
+            instance
+            and instance.is_locked
+            and instance.status == 'approved'
+            and next_status == 'completed'
+            and set(attrs.keys()) == {'status'}
+        )
+        if instance and instance.is_locked and not is_completion_transition:
             raise serializers.ValidationError('Locked goals cannot be modified.')
 
-        next_status = attrs.get('status')
         if instance and next_status and next_status != instance.status:
             try:
                 validate_transition(instance.status, next_status)
@@ -28,6 +36,19 @@ class GoalSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'status': exc.messages}) from exc
 
         return attrs
+
+    def get_approvals(self, obj):
+        approvals = obj.approvals.select_related('reviewed_by').order_by('-created_at')
+        return [
+            {
+                'id': approval.id,
+                'action': approval.action,
+                'comment': approval.comment,
+                'created_at': approval.created_at,
+                'reviewed_by': UserSerializer(approval.reviewed_by).data,
+            }
+            for approval in approvals
+        ]
 
     def validate_weightage(self, value):
         owner = self.instance.owner if self.instance else self.context['request'].user

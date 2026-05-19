@@ -59,14 +59,14 @@ const allNavItems = [
   },
 ]
 
-export default function SidebarContent() {
+export default function SidebarContent({ onNavigate }) {
   const { user, logout } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const canSeeApprovals = ['manager', 'admin'].includes(user?.role)
   const { data: pendingApprovals = [] } = useQuery({
     queryKey: QUERY_KEYS.PENDING_APPROVALS,
     queryFn: getPendingApprovals,
-    enabled: canSeeApprovals,
+    refetchInterval: 60_000,
+    enabled: user?.role === 'manager' || user?.role === 'admin',
   })
 
   const visibleSections = useMemo(
@@ -86,6 +86,8 @@ export default function SidebarContent() {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const pendingApprovalCount = pendingApprovals.length
+  const pendingApprovalLabel = pendingApprovalCount > 99 ? '99+' : pendingApprovalCount
 
   async function handleLogout() {
     setIsLoggingOut(true)
@@ -102,7 +104,7 @@ export default function SidebarContent() {
   return (
     <div className="flex h-full flex-col bg-white">
       <div className="border-b border-slate-200 px-6 py-5">
-        <div className="text-base font-semibold text-indigo-600">? AtomQuest</div>
+        <div className="text-base font-semibold text-indigo-600">AtomQuest</div>
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
@@ -117,6 +119,7 @@ export default function SidebarContent() {
                     key={item.label}
                     to={item.href}
                     end={item.href === ROUTES.DASHBOARD}
+                    onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
                         'flex items-center justify-between rounded-md px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900',
@@ -128,9 +131,12 @@ export default function SidebarContent() {
                       <Icon className="h-4 w-4" />
                       {item.label}
                     </span>
-                    {item.showBadge && pendingApprovals.length > 0 ? (
-                      <Badge className="border border-amber-200 bg-amber-50 px-2 py-0 text-amber-700 hover:bg-amber-50">
-                        {pendingApprovals.length}
+                    {item.showBadge && pendingApprovalCount > 0 ? (
+                      <Badge
+                        title={`${pendingApprovalCount} approvals pending`}
+                        className="min-w-6 justify-center border border-amber-200 bg-amber-50 px-2 py-0 text-xs tabular-nums text-amber-700 hover:bg-amber-50"
+                      >
+                        {pendingApprovalLabel}
                       </Badge>
                     ) : null}
                   </NavLink>

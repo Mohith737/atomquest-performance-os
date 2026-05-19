@@ -3,7 +3,11 @@
 import AppLayout from '@/components/layout/AppLayout'
 import PageHeader from '@/components/layout/PageHeader'
 import { useAuth } from '@/hooks/useAuth'
+import AnalyticsPage from '@/pages/analytics/AnalyticsPage'
+import ApprovalsPage from '@/pages/approvals/ApprovalsPage'
+import AuditLogPage from '@/pages/audit/AuditLogPage'
 import LoginPage from '@/pages/auth/LoginPage'
+import CheckInPage from '@/pages/checkins/CheckInPage'
 import AdminDashboard from '@/pages/dashboard/AdminDashboard'
 import EmployeeDashboard from '@/pages/dashboard/EmployeeDashboard'
 import ManagerDashboard from '@/pages/dashboard/ManagerDashboard'
@@ -25,24 +29,8 @@ function DashboardRouter() {
   return <EmployeeDashboard />
 }
 
-function ApprovalsPage() {
-  return <PlaceholderPage breadcrumb="Workflow" title="Approvals" subtitle="Pending approvals will be implemented next." />
-}
-
 function TeamGoalsPage() {
   return <PlaceholderPage breadcrumb="Goals" title="Team Goals" subtitle="Team goal visibility will be implemented next." />
-}
-
-function AnalyticsPage() {
-  return <PlaceholderPage breadcrumb="Insights" title="Analytics" subtitle="Analytics views will be implemented later." />
-}
-
-function AuditLogPage() {
-  return <PlaceholderPage breadcrumb="Insights" title="Audit Log" subtitle="Audit visibility will be implemented later." />
-}
-
-function CheckInPage() {
-  return <PlaceholderPage breadcrumb="Workflow" title="Check-ins" subtitle="Check-ins will be implemented later." />
 }
 
 export default function AppRouter() {

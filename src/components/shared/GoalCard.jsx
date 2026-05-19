@@ -22,7 +22,7 @@ export default function GoalCard({ goal, onClick }) {
       </div>
       <ProgressBar value={goal.progress} showLabel />
       {goal.is_locked ? (
-        <p className="mt-2 flex items-center gap-1 text-xs text-orange-600">
+        <p className="mt-2 flex items-center gap-1 text-xs text-indigo-700">
           <Lock size={10} /> Goal locked after approval
         </p>
       ) : null}

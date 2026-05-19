@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BarChart2, CheckCircle, ClipboardCheck, Target } from 'lucide-react'
+import { BarChart2, Check, CheckCircle, ClipboardCheck, Target, X } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { toast } from 'sonner'
@@ -9,6 +10,7 @@ import { approveGoal, getPendingApprovals, rejectGoal } from '@/api/approvals'
 import PageHeader from '@/components/layout/PageHeader'
 import EmptyState from '@/components/shared/EmptyState'
 import ErrorState from '@/components/shared/ErrorState'
+import ManagerReviewDialog from '@/components/shared/ManagerReviewDialog'
 import StatCard from '@/components/shared/StatCard'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,27 +36,40 @@ function DashboardSkeleton() {
 
 export default function ManagerDashboard() {
   const queryClient = useQueryClient()
+  const [review, setReview] = useState(null)
   const pendingQuery = useQuery({ queryKey: QUERY_KEYS.PENDING_APPROVALS, queryFn: getPendingApprovals })
   const dashboardQuery = useQuery({ queryKey: QUERY_KEYS.DASHBOARD, queryFn: getDashboard })
 
   const approveMutation = useMutation({
     mutationFn: ({ goalId, comment }) => approveGoal(goalId, comment),
-    onSuccess: () => {
-      toast.success('Goal approved')
+    onSuccess: (goal) => {
+      toast.success('Goal approved and locked')
+      setReview(null)
+      queryClient.setQueryData(QUERY_KEYS.PENDING_APPROVALS, (current = []) =>
+        current.filter((pendingGoal) => pendingGoal.id !== goal.id),
+      )
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PENDING_APPROVALS })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GOALS })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GOAL(goal.id) })
     },
     onError: () => toast.error('Unable to approve goal'),
   })
 
   const rejectMutation = useMutation({
     mutationFn: ({ goalId, comment }) => rejectGoal(goalId, comment),
-    onSuccess: () => {
-      toast.success('Goal rejected')
+    onSuccess: (goal) => {
+      toast.success('Goal rejected with manager feedback')
+      setReview(null)
+      queryClient.setQueryData(QUERY_KEYS.PENDING_APPROVALS, (current = []) =>
+        current.filter((pendingGoal) => pendingGoal.id !== goal.id),
+      )
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PENDING_APPROVALS })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GOALS })
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GOAL(goal.id) })
     },
-    onError: () => toast.error('Unable to reject goal'),
+    onError: (error) => toast.error(error.response?.data?.comment?.[0] || 'Unable to reject goal'),
   })
 
   if (pendingQuery.isLoading || dashboardQuery.isLoading) {
@@ -81,12 +96,11 @@ export default function ManagerDashboard() {
   const pendingGoals = pendingQuery.data ?? []
   const stats = dashboardQuery.data
   const chartData = Object.entries(stats.by_status).map(([status, value]) => ({ status, value }))
+  const isMutating = approveMutation.isPending || rejectMutation.isPending
 
-  function handleReject(goalId) {
-    const comment = window.prompt('Add a rejection comment (minimum 10 characters)')
-    if (!comment) return
-    if (comment.trim().length < 10) {
-      toast.error('Rejection comment must be at least 10 characters')
+  function confirmReview({ goalId, comment }) {
+    if (review.action === 'approve') {
+      approveMutation.mutate({ goalId, comment })
       return
     }
     rejectMutation.mutate({ goalId, comment })
@@ -104,12 +118,12 @@ export default function ManagerDashboard() {
       </div>
 
       {pendingGoals.length > 0 ? (
-        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-700">
           <span>
             <span className="font-semibold">Action Required:</span> {pendingGoals.length} goal(s) awaiting review.
           </span>
-          <Link to={ROUTES.APPROVALS} className="font-medium text-amber-900 hover:text-amber-950">
-            Review Now ?
+          <Link to={ROUTES.APPROVALS} className="font-medium text-indigo-700 hover:text-indigo-900">
+            Review now
           </Link>
         </div>
       ) : null}
@@ -138,17 +152,19 @@ export default function ManagerDashboard() {
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
-                      onClick={() => approveMutation.mutate({ goalId: goal.id, comment: '' })}
+                      disabled={isMutating}
+                      onClick={() => setReview({ goal, action: 'approve' })}
                     >
+                      <Check className="h-4 w-4" />
                       Approve
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      disabled={approveMutation.isPending || rejectMutation.isPending}
-                      onClick={() => handleReject(goal.id)}
+                      disabled={isMutating}
+                      onClick={() => setReview({ goal, action: 'reject' })}
                     >
+                      <X className="h-4 w-4" />
                       Reject
                     </Button>
                   </div>
@@ -173,6 +189,13 @@ export default function ManagerDashboard() {
           </div>
         </section>
       </div>
+
+      <ManagerReviewDialog
+        review={review}
+        onClose={() => setReview(null)}
+        onConfirm={confirmReview}
+        isPending={isMutating}
+      />
     </div>
   )
 }
